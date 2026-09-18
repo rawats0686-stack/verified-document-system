@@ -8,7 +8,13 @@
 <body>
 
     <h1>Verified Document System</h1>
-    <p>Document verification system is running.</p>
+
+    <h2>Upload Document</h2>
+
+    <form action="/upload" method="POST" enctype="multipart/form-data">
+        <input type="file" name="document" required>
+        <button type="submit">Upload</button>
+    </form>
 
 </body>
 </html>
