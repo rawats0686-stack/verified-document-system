@@ -168,7 +168,68 @@ def verify():
     <a href="/">Go Home</a>
     """
 
+@app.route("/approve", methods=["POST"])
+def approve():
+    document_id = request.form["document_id"]
 
+    conn = sqlite3.connect("documents.db")
+    cursor = conn.cursor()
+
+    cursor.execute("""
+        UPDATE documents
+        SET status = ?
+        WHERE document_id = ?
+    """, ("Approved", document_id))
+
+    conn.commit()
+
+    if cursor.rowcount == 0:
+        conn.close()
+        return "<h2>Document ID not found!</h2>"
+
+    conn.close()
+
+    return f"""
+    <h2>Document Approved ✅</h2>
+
+    <p><b>Document ID:</b> {document_id}</p>
+    <p><b>Status:</b> Approved</p>
+
+    <br>
+    <a href="/">Go Back</a>
+    """
+
+
+@app.route("/reject", methods=["POST"])
+def reject():
+    document_id = request.form["document_id"]
+
+    conn = sqlite3.connect("documents.db")
+    cursor = conn.cursor()
+
+    cursor.execute("""
+        UPDATE documents
+        SET status = ?
+        WHERE document_id = ?
+    """, ("Rejected", document_id))
+
+    conn.commit()
+
+    if cursor.rowcount == 0:
+        conn.close()
+        return "<h2>Document ID not found!</h2>"
+
+    conn.close()
+
+    return f"""
+    <h2>Document Rejected ❌</h2>
+
+    <p><b>Document ID:</b> {document_id}</p>
+    <p><b>Status:</b> Rejected</p>
+
+    <br>
+    <a href="/">Go Back</a>
+    """
 if __name__ == "__main__":
     init_db()
     app.run(debug=True)

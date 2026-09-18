@@ -50,5 +50,44 @@
 
     </form>
 
+    <hr>
+
+    <h2>Authority Approval</h2>
+
+    <form action="/approve" method="POST">
+
+        <label>Document ID:</label>
+        <br>
+
+        <input
+            type="text"
+            name="document_id"
+            placeholder="Enter Document ID"
+            required
+        >
+
+        <br><br>
+
+        <button type="submit">Approve Document</button>
+
+    </form>
+
+    <br>
+
+    <form action="/reject" method="POST">
+
+        <input
+            type="text"
+            name="document_id"
+            placeholder="Enter Document ID"
+            required
+        >
+
+        <br><br>
+
+        <button type="submit">Reject Document</button>
+
+    </form>
+
 </body>
 </html>
