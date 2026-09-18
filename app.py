@@ -94,6 +94,78 @@ def upload():
     <p><b>Status:</b> Pending</p>
 
     <p><b>Uploaded At:</b> {uploaded_at}</p>
+
+    <br>
+    <a href="/">Go Back</a>
+    """
+
+
+@app.route("/verify", methods=["GET", "POST"])
+def verify():
+
+    if request.method == "GET":
+        return render_template("verify.html")
+
+    document_id = request.form["document_id"]
+    file = request.files["document"]
+
+    if file.filename == "":
+        return "No document selected"
+
+    conn = sqlite3.connect("documents.db")
+    cursor = conn.cursor()
+
+    cursor.execute("""
+        SELECT filename, file_hash, uploaded_at, status
+        FROM documents
+        WHERE document_id = ?
+    """, (document_id,))
+
+    document = cursor.fetchone()
+
+    conn.close()
+
+    if document is None:
+        return "<h2>Document ID not found!</h2>"
+
+    filename, stored_hash, uploaded_at, status = document
+
+    temp_path = os.path.join(
+        app.config["UPLOAD_FOLDER"],
+        "verify_temp"
+    )
+
+    file.save(temp_path)
+
+    current_hash = calculate_hash(temp_path)
+
+    os.remove(temp_path)
+
+    if current_hash == stored_hash:
+        result = "ORIGINAL DOCUMENT ✅"
+    else:
+        result = "DOCUMENT MODIFIED ⚠️"
+
+    return f"""
+    <h2>{result}</h2>
+
+    <p><b>Document ID:</b> {document_id}</p>
+
+    <p><b>Original Filename:</b> {filename}</p>
+
+    <p><b>Stored Hash:</b></p>
+    <p>{stored_hash}</p>
+
+    <p><b>Current Hash:</b></p>
+    <p>{current_hash}</p>
+
+    <p><b>Uploaded At:</b> {uploaded_at}</p>
+
+    <br>
+    <a href="/verify">Verify Another Document</a>
+
+    <br><br>
+    <a href="/">Go Home</a>
     """
 
 

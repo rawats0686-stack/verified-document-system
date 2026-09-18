@@ -12,8 +12,42 @@
     <h2>Upload Document</h2>
 
     <form action="/upload" method="POST" enctype="multipart/form-data">
+
         <input type="file" name="document" required>
-        <button type="submit">Upload</button>
+
+        <br><br>
+
+        <button type="submit">Upload Document</button>
+
+    </form>
+
+    <hr>
+
+    <h2>Verify Document</h2>
+
+    <form action="/verify" method="POST" enctype="multipart/form-data">
+
+        <label>Document ID:</label>
+        <br>
+
+        <input
+            type="text"
+            name="document_id"
+            placeholder="Example: DOC-A1B2C3D4"
+            required
+        >
+
+        <br><br>
+
+        <label>Select Document:</label>
+        <br>
+
+        <input type="file" name="document" required>
+
+        <br><br>
+
+        <button type="submit">Verify Document</button>
+
     </form>
 
 </body>
