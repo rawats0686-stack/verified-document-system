@@ -23,7 +23,9 @@ def init_db():
             filename TEXT,
             file_hash TEXT,
             uploaded_at TEXT,
-            status TEXT
+            status TEXT,
+            authority TEXT,
+            action_at TEXT
         )
     """)
 
@@ -86,14 +88,16 @@ def upload():
 
     cursor.execute("""
         INSERT INTO documents
-        (document_id, filename, file_hash, uploaded_at, status)
-        VALUES (?, ?, ?, ?, ?)
+        (document_id, filename, file_hash, uploaded_at, status, authority, action_at)
+        VALUES (?, ?, ?, ?, ?, ?, ?)
     """, (
         document_id,
         file.filename,
         document_hash,
         uploaded_at,
-        "Pending"
+        "Pending",
+        "",
+        ""
     ))
 
     conn.commit()
@@ -107,6 +111,12 @@ def upload():
     <p><b>QR Code:</b></p>
 
     <img src="/qr/{document_id}" width="200">
+
+    <br><br>
+
+    <a href="/qr/{document_id}" download>
+        Download QR Code
+    </a>
 
     <p><b>Verification URL:</b></p>
     <p>{verification_url}</p>
@@ -138,7 +148,7 @@ def verify_by_qr(document_id):
     cursor = conn.cursor()
 
     cursor.execute("""
-        SELECT filename, file_hash, uploaded_at, status
+        SELECT filename, file_hash, uploaded_at, status, authority, action_at
         FROM documents
         WHERE document_id = ?
     """, (document_id,))
@@ -155,7 +165,7 @@ def verify_by_qr(document_id):
         <a href="/">Go Back</a>
         """
 
-    filename, stored_hash, uploaded_at, status = document
+    filename, stored_hash, uploaded_at, status, authority, action_at = document
 
     if status == "Approved":
         status_message = "DOCUMENT APPROVED ✅"
@@ -173,9 +183,25 @@ def verify_by_qr(document_id):
 
     <p><b>Document ID:</b> {document_id}</p>
 
+    <p><b>QR Code:</b></p>
+
+    <img src="/qr/{document_id}" width="200">
+
+    <br><br>
+
+    <a href="/qr/{document_id}" download>
+        Download QR Code
+    </a>
+
+    <hr>
+
     <p><b>Original Filename:</b> {filename}</p>
 
     <p><b>Authority Status:</b> {status}</p>
+
+    <p><b>Authority:</b> {authority if authority else "Not yet reviewed"}</p>
+
+    <p><b>Action Time:</b> {action_at if action_at else "Not yet reviewed"}</p>
 
     <p><b>SHA-256 Hash:</b></p>
     <p>{stored_hash}</p>
@@ -185,13 +211,9 @@ def verify_by_qr(document_id):
     <hr>
 
     <p>
-    This QR code identifies the document record
-    stored in the verification system.
-    </p>
-
-    <p>
-    For complete file integrity verification,
-    compare the document using the Verify Document option.
+    This QR code always points to the same document record.
+    The status shown here updates automatically after
+    authority approval or rejection.
     </p>
 
     <br>
@@ -211,7 +233,7 @@ def verify():
     cursor = conn.cursor()
 
     cursor.execute("""
-        SELECT filename, file_hash, uploaded_at, status
+        SELECT filename, file_hash, uploaded_at, status, authority, action_at
         FROM documents
         WHERE document_id = ?
     """, (document_id,))
@@ -223,7 +245,7 @@ def verify():
     if document is None:
         return "<h2>Document ID not found!</h2>"
 
-    filename, stored_hash, uploaded_at, status = document
+    filename, stored_hash, uploaded_at, status, authority, action_at = document
 
     temp_path = os.path.join(
         app.config["UPLOAD_FOLDER"],
@@ -250,6 +272,10 @@ def verify():
 
     <p><b>Authority Status:</b> {status}</p>
 
+    <p><b>Authority:</b> {authority if authority else "Not yet reviewed"}</p>
+
+    <p><b>Action Time:</b> {action_at if action_at else "Not yet reviewed"}</p>
+
     <p><b>Stored Hash:</b></p>
     <p>{stored_hash}</p>
 
@@ -259,6 +285,13 @@ def verify():
     <p><b>Uploaded At:</b> {uploaded_at}</p>
 
     <br>
+
+    <a href="/verify/{document_id}">
+        View Document QR
+    </a>
+
+    <br><br>
+
     <a href="/">Go Back</a>
     """
 
@@ -267,14 +300,28 @@ def verify():
 def approve():
     document_id = request.form["document_id"]
 
+    authority = request.form.get(
+        "authority",
+        "Village Authority"
+    )
+
+    action_at = datetime.now().strftime(
+        "%Y-%m-%d %H:%M:%S"
+    )
+
     conn = sqlite3.connect("documents.db")
     cursor = conn.cursor()
 
     cursor.execute("""
         UPDATE documents
-        SET status = ?
+        SET status = ?, authority = ?, action_at = ?
         WHERE document_id = ?
-    """, ("Approved", document_id))
+    """, (
+        "Approved",
+        authority,
+        action_at,
+        document_id
+    ))
 
     conn.commit()
 
@@ -288,9 +335,33 @@ def approve():
     <h2>Document Approved ✅</h2>
 
     <p><b>Document ID:</b> {document_id}</p>
+
+    <p><b>Authority:</b> {authority}</p>
+
     <p><b>Status:</b> Approved</p>
 
-    <br>
+    <p><b>Approved At:</b> {action_at}</p>
+
+    <hr>
+
+    <h3>QR Code</h3>
+
+    <img src="/qr/{document_id}" width="200">
+
+    <br><br>
+
+    <a href="/qr/{document_id}" download>
+        Download QR Code
+    </a>
+
+    <br><br>
+
+    <a href="/verify/{document_id}">
+        Open Verification Page
+    </a>
+
+    <br><br>
+
     <a href="/">Go Back</a>
     """
 
@@ -299,14 +370,28 @@ def approve():
 def reject():
     document_id = request.form["document_id"]
 
+    authority = request.form.get(
+        "authority",
+        "Village Authority"
+    )
+
+    action_at = datetime.now().strftime(
+        "%Y-%m-%d %H:%M:%S"
+    )
+
     conn = sqlite3.connect("documents.db")
     cursor = conn.cursor()
 
     cursor.execute("""
         UPDATE documents
-        SET status = ?
+        SET status = ?, authority = ?, action_at = ?
         WHERE document_id = ?
-    """, ("Rejected", document_id))
+    """, (
+        "Rejected",
+        authority,
+        action_at,
+        document_id
+    ))
 
     conn.commit()
 
@@ -320,9 +405,33 @@ def reject():
     <h2>Document Rejected ❌</h2>
 
     <p><b>Document ID:</b> {document_id}</p>
+
+    <p><b>Authority:</b> {authority}</p>
+
     <p><b>Status:</b> Rejected</p>
 
-    <br>
+    <p><b>Rejected At:</b> {action_at}</p>
+
+    <hr>
+
+    <h3>QR Code</h3>
+
+    <img src="/qr/{document_id}" width="200">
+
+    <br><br>
+
+    <a href="/qr/{document_id}" download>
+        Download QR Code
+    </a>
+
+    <br><br>
+
+    <a href="/verify/{document_id}">
+        Open Verification Page
+    </a>
+
+    <br><br>
+
     <a href="/">Go Back</a>
     """
 
