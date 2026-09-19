@@ -100,12 +100,8 @@ def upload():
     """
 
 
-@app.route("/verify", methods=["GET", "POST"])
+@app.route("/verify", methods=["POST"])
 def verify():
-
-    if request.method == "GET":
-        return render_template("verify.html")
-
     document_id = request.form["document_id"]
     file = request.files["document"]
 
@@ -153,6 +149,8 @@ def verify():
 
     <p><b>Original Filename:</b> {filename}</p>
 
+    <p><b>Authority Status:</b> {status}</p>
+
     <p><b>Stored Hash:</b></p>
     <p>{stored_hash}</p>
 
@@ -162,11 +160,9 @@ def verify():
     <p><b>Uploaded At:</b> {uploaded_at}</p>
 
     <br>
-    <a href="/verify">Verify Another Document</a>
-
-    <br><br>
-    <a href="/">Go Home</a>
+    <a href="/">Go Back</a>
     """
+
 
 @app.route("/approve", methods=["POST"])
 def approve():
@@ -230,6 +226,8 @@ def reject():
     <br>
     <a href="/">Go Back</a>
     """
+
+
 if __name__ == "__main__":
     init_db()
     app.run(debug=True)
