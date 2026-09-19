@@ -1,9 +1,10 @@
-from flask import Flask, render_template, request
+from flask import Flask, render_template, request, send_from_directory, url_for
 import os
 import hashlib
 import sqlite3
 import uuid
 from datetime import datetime
+import qrcode
 
 app = Flask(__name__)
 
@@ -63,6 +64,22 @@ def upload():
 
     document_id = "DOC-" + uuid.uuid4().hex[:8].upper()
 
+    # QR now contains verification URL
+    verification_url = url_for(
+        "verify_by_qr",
+        document_id=document_id,
+        _external=True
+    )
+
+    qr = qrcode.make(verification_url)
+
+    qr.save(
+        os.path.join(
+            app.config["UPLOAD_FOLDER"],
+            document_id + ".png"
+        )
+    )
+
     uploaded_at = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
 
     conn = sqlite3.connect("documents.db")
@@ -84,9 +101,18 @@ def upload():
     conn.close()
 
     return f"""
-    <h2>Document uploaded successfully!</h2>
+    <h2>Document uploaded successfully! ✅</h2>
 
     <p><b>Document ID:</b> {document_id}</p>
+
+    <p><b>QR Code:</b></p>
+
+    <img src="/qr/{document_id}" width="200">
+
+    <p><b>Scan this QR to verify the document record.</b></p>
+
+    <p><b>Verification URL:</b></p>
+    <p>{verification_url}</p>
 
     <p><b>SHA-256 Hash:</b></p>
     <p>{document_hash}</p>
@@ -94,6 +120,74 @@ def upload():
     <p><b>Status:</b> Pending</p>
 
     <p><b>Uploaded At:</b> {uploaded_at}</p>
+
+    <br>
+    <a href="/">Go Back</a>
+    """
+
+
+@app.route("/qr/<document_id>")
+def qr_code(document_id):
+    return send_from_directory(
+        app.config["UPLOAD_FOLDER"],
+        document_id + ".png"
+    )
+
+
+# QR scan verification page
+@app.route("/verify/<document_id>")
+def verify_by_qr(document_id):
+
+    conn = sqlite3.connect("documents.db")
+    cursor = conn.cursor()
+
+    cursor.execute("""
+        SELECT filename, file_hash, uploaded_at, status
+        FROM documents
+        WHERE document_id = ?
+    """, (document_id,))
+
+    document = cursor.fetchone()
+
+    conn.close()
+
+    if document is None:
+        return """
+        <h2>Document Not Found ❌</h2>
+        <p>This Document ID does not exist in the system.</p>
+        <br>
+        <a href="/">Go Back</a>
+        """
+
+    filename, stored_hash, uploaded_at, status = document
+
+    return f"""
+    <h2>Document Verification</h2>
+
+    <h3>Document Found ✅</h3>
+
+    <p><b>Document ID:</b> {document_id}</p>
+
+    <p><b>Original Filename:</b> {filename}</p>
+
+    <p><b>Authority Status:</b> {status}</p>
+
+    <p><b>SHA-256 Hash:</b></p>
+    <p>{stored_hash}</p>
+
+    <p><b>Uploaded At:</b> {uploaded_at}</p>
+
+    <hr>
+
+    <p>
+    This QR code identifies the original document record
+    stored in the system.
+    </p>
+
+    <p>
+    To check whether a particular file has been modified,
+    use the Verify Document option on the main page.
+    </p>
 
     <br>
     <a href="/">Go Back</a>
@@ -230,4 +324,4 @@ def reject():
 
 if __name__ == "__main__":
     init_db()
-    app.run(debug=True)
+    app.run(host="0.0.0.0", port=5000, debug=True)
