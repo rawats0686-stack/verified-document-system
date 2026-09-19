@@ -64,7 +64,6 @@ def upload():
 
     document_id = "DOC-" + uuid.uuid4().hex[:8].upper()
 
-    # QR now contains verification URL
     verification_url = url_for(
         "verify_by_qr",
         document_id=document_id,
@@ -109,8 +108,6 @@ def upload():
 
     <img src="/qr/{document_id}" width="200">
 
-    <p><b>Scan this QR to verify the document record.</b></p>
-
     <p><b>Verification URL:</b></p>
     <p>{verification_url}</p>
 
@@ -134,7 +131,6 @@ def qr_code(document_id):
     )
 
 
-# QR scan verification page
 @app.route("/verify/<document_id>")
 def verify_by_qr(document_id):
 
@@ -161,10 +157,19 @@ def verify_by_qr(document_id):
 
     filename, stored_hash, uploaded_at, status = document
 
+    if status == "Approved":
+        status_message = "DOCUMENT APPROVED ✅"
+    elif status == "Rejected":
+        status_message = "DOCUMENT REJECTED ❌"
+    else:
+        status_message = "DOCUMENT PENDING ⏳"
+
     return f"""
     <h2>Document Verification</h2>
 
-    <h3>Document Found ✅</h3>
+    <h3>{status_message}</h3>
+
+    <hr>
 
     <p><b>Document ID:</b> {document_id}</p>
 
@@ -180,13 +185,13 @@ def verify_by_qr(document_id):
     <hr>
 
     <p>
-    This QR code identifies the original document record
-    stored in the system.
+    This QR code identifies the document record
+    stored in the verification system.
     </p>
 
     <p>
-    To check whether a particular file has been modified,
-    use the Verify Document option on the main page.
+    For complete file integrity verification,
+    compare the document using the Verify Document option.
     </p>
 
     <br>
